@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>세 자매 다이어트 대작전</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Pretendard & Jua / Noto Sans KR Fonts -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+        .btn-arcade {
+            transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 5px 0 rgba(0, 0, 0, 0.22);
+        }
+        .btn-arcade:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 0 rgba(0, 0, 0, 0.22);
+        }
+        .btn-arcade:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
+        }
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+        .animate-float {
+            animation: floatSlow 2.6s ease-in-out infinite;
+        }
+        @keyframes pulseUrgent {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.07); }
+        }
+        .animate-urgent {
+            animation: pulseUrgent 0.55s ease-in-out infinite;
+        }
+        @keyframes rowFlash {
+            0% { background-color: #fde047; transform: scale(1.03); }
+            50% { background-color: #fef08a; transform: scale(1.015); }
+            100% { background-color: #fef9c3; transform: scale(1); }
+        }
+        .rank-row-updated {
+            animation: rowFlash 0.9s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-sky-200 via-emerald-50 to-lime-100 h-screen w-screen flex flex-col items-center justify-center relative">
+
+    <!-- 상단 HUD (게임 진행 중 표시) -->
+    <header id="hud" class="hidden fixed top-0 left-0 right-0 z-20 px-3 py-2.5 sm:px-6 sm:py-3.5 flex items-center justify-between max-w-4xl mx-auto pointer-events-none gap-2">
+        <!-- 현재 플레이어 & 목숨 하트 3개 -->
+        <div class="bg-white/95 backdrop-blur-sm border-2 border-rose-400 rounded-2xl px-3.5 py-1.5 sm:px-4 sm:py-2 shadow-md flex items-center gap-2 pointer-events-auto">
+            <div>
+                <div id="hud-char-name" class="text-xs font-black text-gray-700 leading-tight">노혜빈</div>
+                <div id="hud-hearts" class="text-lg sm:text-xl tracking-tight leading-none mt-0.5">❤️❤️❤️</div>
+            </div>
+        </div>
+
+        <!-- 30초 카운트다운 타이머 -->
+        <div id="timer-box" class="bg-white/95 backdrop-blur-sm border-2 border-amber-400 rounded-2xl px-4 py-1.5 sm:px-5 sm:py-2 shadow-md flex flex-col items-center min-w-[96px] sm:min-w-[118px]">
+            <span class="text-[10px] sm:text-xs font-bold text-amber-600">남은 시간</span>
+            <span id="timer-value" class="font-jua text-xl sm:text-2xl text-gray-800 leading-none mt-0.5">30.0초</span>
+        </div>
+
+        <!-- 건강식 점수 & 효과음 버튼 -->
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <div class="bg-white/95 backdrop-blur-sm border-2 border-emerald-500 rounded-2xl px-3.5 py-1.5 sm:px-4 sm:py-2 shadow-md text-right">
+                <div class="text-[10px] sm:text-xs font-bold text-emerald-600">건강식</div>
+                <div class="font-jua text-xl sm:text-2xl text-emerald-600 leading-none mt-0.5">
+                    <span id="score-value">0</span><span class="text-xs sm:text-sm text-gray-500 ml-0.5">개</span>
+                </div>
+            </div>
+            <button id="sound-toggle" type="button" class="bg-white/95 hover:bg-gray-50 border-2 border-gray-300 rounded-2xl p-2 sm:p-2.5 shadow-md text-lg sm:text-xl transition active:scale-95 cursor-pointer" title="효과음 켜기/끄기">
+                🔊
+            </button>
+        </div>
+    </header>
+
+    <!-- 게임 캔버스 -->
+    <main class="w-full h-full flex items-center justify-center relative">
+        <canvas id="gameCanvas" class="block w-full h-full cursor-none"></canvas>
+    </main>
+
+    <!-- 1. 시작 화면 오버레이 (세 자매 캐릭터 선택 + 고정 3인 실시간 랭킹 보드) -->
+    <div id="start-screen" class="fixed inset-0 z-30 bg-black/45 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-7 shadow-2xl border-4 border-emerald-400 text-center relative my-auto">
+            <div class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 font-bold text-xs px-3 py-1 rounded-full mb-1.5">
+                <span>⏱️ 30초 서바이벌</span>
+                <span>•</span>
+                <span>❤️❤️❤️ 기회 3번</span>
+            </div>
+            <h1 class="font-jua text-3xl sm:text-4xl text-gray-800 mb-1 tracking-tight animate-float">
+                🥗 세 자매 다이어트 대작전
+            </h1>
+            <p class="text-gray-500 text-xs sm:text-sm mb-4">
+                30초 동안 건강식(+1점)을 먹어 최고 순위에 오르세요! 정크푸드 3번이면 돼지로 뿅!
+            </p>
+
+            <!-- 세 자매 캐릭터 선택 (오직 초상화 캔버스와 이름만 표시, 설명 텍스트 없음) -->
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <span class="font-jua text-base sm:text-lg text-gray-800">도전할 자매 선택</span>
+                    <span id="selected-char-badge" class="text-xs font-bold bg-emerald-500 text-white px-2.5 py-0.5 rounded-full">노혜빈</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2.5 sm:gap-3.5" id="character-cards">
+                    <!-- 노혜빈 -->
+                    <button type="button" data-char="hyebin" class="char-card cursor-pointer rounded-2xl p-3 border-3 border-emerald-500 bg-emerald-50/90 ring-2 ring-emerald-400 transition-all flex flex-col items-center justify-center">
+                        <canvas id="preview-hyebin" width="120" height="145" class="w-24 h-28 sm:w-28 sm:h-32"></canvas>
+                        <div class="font-jua text-lg sm:text-xl text-gray-800 mt-1">노혜빈</div>
+                    </button>
+
+                    <!-- 노효정 -->
+                    <button type="button" data-char="hyojeong" class="char-card cursor-pointer rounded-2xl p-3 border-2 border-gray-200 bg-gray-50 hover:bg-emerald-50/40 transition-all flex flex-col items-center justify-center">
+                        <canvas id="preview-hyojeong" width="120" height="145" class="w-24 h-28 sm:w-28 sm:h-32"></canvas>
+                        <div class="font-jua text-lg sm:text-xl text-gray-800 mt-1">노효정</div>
+                    </button>
+
+                    <!-- 노아 -->
+                    <button type="button" data-char="noah" class="char-card cursor-pointer rounded-2xl p-3 border-2 border-gray-200 bg-gray-50 hover:bg-emerald-50/40 transition-all flex flex-col items-center justify-center">
+                        <canvas id="preview-noah" width="120" height="145" class="w-24 h-28 sm:w-28 sm:h-32"></canvas>
+                        <div class="font-jua text-lg sm:text-xl text-gray-800 mt-1">노아</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 고정 3인 실시간 랭킹 보드 -->
+            <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3 mb-4 text-left">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-base">🏆</span>
+                        <span class="font-jua text-base text-gray-800">세 자매 실시간 순위표</span>
+                        <span class="text-[10px] font-bold text-slate-400">(최신 기록 반영)</span>
+                    </div>
+                    <button type="button" id="reset-rank-start-btn" class="text-[11px] text-gray-400 hover:text-rose-500 underline cursor-pointer">
+                        기록 초기화
+                    </button>
+                </div>
+                <div id="start-ranking-list" class="space-y-1.5 text-xs sm:text-sm">
+                    <!-- JS로 고정 3명 렌더링 -->
+                </div>
+            </div>
+
+            <button id="start-btn" type="button" class="btn-arcade w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-jua text-xl sm:text-2xl py-3.5 rounded-2xl cursor-pointer">
+                30초 도전 시작! 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 게임 종료 결과 & 고정 3인 실시간 갱신 랭킹 오버레이 -->
+    <div id="result-screen" class="hidden fixed inset-0 z-30 bg-black/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div id="result-card" class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border-4 border-emerald-500 text-center my-auto">
+            <!-- 결과 일러스트 (성공 시 자매 / 실패 시 분홍 돼지) -->
+            <div class="flex justify-center mb-2">
+                <div class="bg-gradient-to-b from-sky-100 to-emerald-50 rounded-full p-2 border-2 border-gray-200 shadow-inner">
+                    <canvas id="result-char-canvas" width="135" height="145" class="w-24 h-28 sm:w-28 sm:h-32"></canvas>
+                </div>
+            </div>
+
+            <div id="result-badge" class="inline-block bg-emerald-100 text-emerald-700 font-bold text-xs px-3 py-1 rounded-full mb-1">
+                30초 생존 성공!
+            </div>
+            <h2 id="result-title" class="font-jua text-3xl sm:text-4xl text-gray-800 mb-1">
+                30초 생존 성공! ✨
+            </h2>
+            <p id="result-desc" class="text-gray-600 text-xs sm:text-sm mb-4">
+                유혹을 이겨내고 건강한 식단을 지켜냈습니다!
+            </p>
+
+            <!-- 이번 도전 결과 요약 -->
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 mb-4 flex items-center justify-around">
+                <div>
+                    <div class="text-[11px] font-bold text-gray-500">도전 자매</div>
+                    <div id="res-char-name" class="font-jua text-xl text-gray-800">노혜빈</div>
+                </div>
+                <div class="h-8 w-px bg-amber-200"></div>
+                <div>
+                    <div class="text-[11px] font-bold text-gray-500">최신 획득</div>
+                    <div id="res-score" class="font-jua text-2xl text-emerald-600">0개</div>
+                </div>
+                <div class="h-8 w-px bg-amber-200"></div>
+                <div>
+                    <div class="text-[11px] font-bold text-gray-500">최종 결과</div>
+                    <div id="res-status" class="font-jua text-lg text-emerald-600">생존성공 ✨</div>
+                </div>
+            </div>
+
+            <!-- 고정 3인 실시간 새로고침된 랭킹 보드 -->
+            <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3 mb-5 text-left">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-base">📊</span>
+                        <span class="font-jua text-base text-gray-800">세 자매 실시간 순위표</span>
+                    </div>
+                    <span id="rank-change-pill" class="text-[11px] font-bold bg-amber-400 text-amber-950 px-2.5 py-0.5 rounded-full animate-bounce">
+                        최신 점수 반영 완료!
+                    </span>
+                </div>
+                <div id="result-ranking-list" class="space-y-1.5 text-xs sm:text-sm">
+                    <!-- JS로 고정 3명 렌더링 -->
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+                <button id="change-char-btn" type="button" class="btn-arcade bg-gray-100 hover:bg-gray-200 text-gray-800 font-jua text-lg sm:text-xl py-3.5 rounded-2xl cursor-pointer border border-gray-300">
+                    다른 자매 선택 👧
+                </button>
+                <button id="retry-btn" type="button" class="btn-arcade bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-jua text-lg sm:text-xl py-3.5 rounded-2xl cursor-pointer">
+                    다시 도전하기 🔄
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 1. Web Audio API 효과음 매니저
+         */
+        class SoundManager {
+            constructor() {
+                this.enabled = true;
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            playGood() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, now);
+                osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.11);
+                gain.gain.setValueAtTime(0.24, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.14);
+            }
+
+            playBad() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.linearRampToValueAtTime(85, now + 0.22);
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.24);
+            }
+
+            playPigTransform() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+
+                // '뿅!' 변신음
+                const popOsc = this.ctx.createOscillator();
+                const popGain = this.ctx.createGain();
+                popOsc.type = 'sine';
+                popOsc.frequency.setValueAtTime(280, now);
+                popOsc.frequency.exponentialRampToValueAtTime(1200, now + 0.14);
+                popGain.gain.setValueAtTime(0.3, now);
+                popGain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+                popOsc.connect(popGain);
+                popGain.connect(this.ctx.destination);
+                popOsc.start(now);
+                popOsc.stop(now + 0.16);
+
+                // '꿀-꿀!' 사운드 2회
+                [0.2, 0.42].forEach((offset) => {
+                    const t = now + offset;
+                    const oinkOsc = this.ctx.createOscillator();
+                    const oinkGain = this.ctx.createGain();
+                    oinkOsc.type = 'sawtooth';
+                    oinkOsc.frequency.setValueAtTime(135, t);
+                    oinkOsc.frequency.linearRampToValueAtTime(190, t + 0.08);
+                    oinkOsc.frequency.linearRampToValueAtTime(110, t + 0.16);
+                    oinkGain.gain.setValueAtTime(0.25, t);
+                    oinkGain.gain.exponentialRampToValueAtTime(0.01, t + 0.17);
+                    oinkOsc.connect(oinkGain);
+                    oinkGain.connect(this.ctx.destination);
+                    oinkOsc.start(t);
+                    oinkOsc.stop(t + 0.17);
+                });
+            }
+
+            playSuccess() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    const now = this.ctx.currentTime + idx * 0.1;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.32);
+                });
+            }
+        }
+
+        const sound = new SoundManager();
+
+        /**
+         * 2. 세 자매 캐릭터 프로필 (노혜빈, 노효정, 노아)
+         */
+        const SISTER_IDS = ['hyebin', 'hyojeong', 'noah'];
+
+        const CHARACTERS = {
+            hyebin: {
+                id: 'hyebin',
+                name: '노혜빈',
+                legH: 15,           // 아담한 키
+                bodyH: 27,
+                shoulderW: 17,
+                waistW: 15,
+                armThick: 6.5,
+                faceRx: 27,
+                faceRy: 28,
+                hairColor: '#3d281e'
+            },
+            hyojeong: {
+                id: 'hyojeong',
+                name: '노효정',
+                legH: 23,           // 가장 큰 키
+                bodyH: 43,
+                shoulderW: 25,      // 통통하고 넓은 체형
+                waistW: 26,
+                armThick: 9.5,
+                faceRx: 31,         // 통통한 볼살
+                faceRy: 28,
+                hairColor: '#291b15'
+            },
+            noah: {
+                id: 'noah',
+                name: '노아',
+                legH: 19,           // 중간보다 약간 작은 키
+                bodyH: 32,
+                shoulderW: 13.5,    // 가장 마르고 슬림한 어깨/허리
+                waistW: 12,
+                armThick: 5.0,
+                faceRx: 24.5,       // 제일 갸름한 V라인 얼굴형
+                faceRy: 27.5,
+                hairColor: '#302019'
+            }
+        };
+
+        let selectedCharId = 'hyebin';
+
+        /**
+         * 3. 고정 3인 실시간 랭킹 시스템
+         * - 오직 노혜빈, 노효정, 노아 3명만 존재
+         * - 이전 점수보다 높든 낮든 무조건 방금 얻은 최신 개수로 덮어씌워 순위 재정렬
+         */
+        const RANKING_STORAGE_KEY = 'sisters_latest_ranking_v3';
+
+        function loadSisterRecords() {
+            const emptyState = { hyebin: null, hyojeong: null, noah: null };
+            try {
+                const raw = localStorage.getItem(RANKING_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object') {
+                        return {
+                            hyebin: parsed.hyebin || null,
+                            hyojeong: parsed.hyojeong || null,
+                            noah: parsed.noah || null
+                        };
+                    }
+                }
+            } catch (e) {
+                console.warn('랭킹 데이터 로드 오류:', e);
+            }
+            return emptyState;
+        }
+
+        function saveSisterRecords(records) {
+            try {
+                localStorage.setItem(RANKING_STORAGE_KEY, JSON.stringify(records));
+            } catch (e) {
+                console.warn('랭킹 데이터 저장 오류:', e);
+            }
+        }
+
+        // 특정 자매의 최신 점수 덮어쓰기 (이전보다 많든 적든 무조건 최신 값으로 갱신)
+        function updateSisterLatestScore(charId, latestScore, isPig) {
+            const records = loadSisterRecords();
+            records[charId] = {
+                score: latestScore,
+                isPig: isPig,
+                updatedAt: Date.now()
+            };
+            saveSisterRecords(records);
+            const sorted = getSortedThreeSisters();
+            const rankNumber = sorted.findIndex(item => item.id === charId) + 1;
+            return { sorted, rankNumber };
+        }
+
+        // 고정 3명 정렬: 플레이 완료한 자매(최신 점수 내림차순 -> 생존 우선 -> 최신순) 먼저, 미도전 자매는 하단 배치
+        function getSortedThreeSisters() {
+            const records = loadSisterRecords();
+            const roster = SISTER_IDS.map((id) => {
+                const rec = records[id];
+                return {
+                    id,
+                    name: CHARACTERS[id].name,
+                    played: rec !== null,
+                    score: rec ? rec.score : 0,
+                    isPig: rec ? rec.isPig : false,
+                    updatedAt: rec ? rec.updatedAt : 0
+                };
+            });
+
+            return roster.sort((a, b) => {
+                if (a.played !== b.played) return a.played ? -1 : 1;
+                if (!a.played && !b.played) return SISTER_IDS.indexOf(a.id) - SISTER_IDS.indexOf(b.id);
+                if (b.score !== a.score) return b.score - a.score;
+                if (a.isPig !== b.isPig) return a.isPig ? 1 : -1;
+                return b.updatedAt - a.updatedAt;
+            });
+        }
+
+        function renderThreeSisterRanking(containerId, updatedCharId = null) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const sortedThree = getSortedThreeSisters();
+
+            container.innerHTML = sortedThree.map((sister, idx) => {
+                const rank = idx + 1;
+                let rankBadge = `<span class="inline-block w-6 text-center font-bold text-gray-400">-</span>`;
+                if (sister.played) {
+                    if (rank === 1) rankBadge = `<span class="inline-block w-6 text-center text-base">🥇</span>`;
+                    else if (rank === 2) rankBadge = `<span class="inline-block w-6 text-center text-base">🥈</span>`;
+                    else if (rank === 3) rankBadge = `<span class="inline-block w-6 text-center text-base">🥉</span>`;
+                }
+
+                const isJustUpdated = sister.id === updatedCharId;
+                const rowStyle = isJustUpdated
+                    ? 'bg-yellow-100 border-2 border-amber-400 shadow-sm rank-row-updated'
+                    : sister.played
+                        ? 'bg-white border border-gray-200'
+                        : 'bg-gray-100/80 border border-dashed border-gray-300 opacity-75';
+
+                let statusTag = '';
+                let scoreText = '';
+
+                if (!sister.played) {
+                    statusTag = `<span class="text-[10px] sm:text-xs bg-gray-200 text-gray-600 font-bold px-2 py-0.5 rounded-full">미도전</span>`;
+                    scoreText = `<span class="font-jua text-sm sm:text-base text-gray-400">0개</span>`;
+                } else {
+                    statusTag = sister.isPig
+                        ? `<span class="text-[10px] sm:text-xs bg-pink-100 text-pink-600 font-bold px-2 py-0.5 rounded-full">🐷 돼지변신</span>`
+                        : `<span class="text-[10px] sm:text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">✨ 생존성공</span>`;
+                    scoreText = `<span class="font-jua text-base sm:text-lg ${sister.isPig ? 'text-pink-600' : 'text-emerald-600'}">${sister.score}개</span>`;
+                }
+
+                return `
+                    <div class="flex items-center justify-between px-3 py-2 rounded-xl transition-all ${rowStyle}">
+                        <div class="flex items-center gap-2">
+                            ${rankBadge}
+                            <span class="font-jua text-gray-800 text-sm sm:text-base">${sister.name}</span>
+                            ${statusTag}
+                            ${isJustUpdated ? '<span class="text-[10px] font-black text-amber-700">◀ 갱신됨</span>' : ''}
+                        </div>
+                        <div>${scoreText}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * 4. 음식 데이터 (건강식 8종 / 정크푸드 6종)
+         */
+        const HEALTHY_FOODS = [
+            { emoji: '🍎', name: '사과' },
+            { emoji: '🥦', name: '브로콜리' },
+            { emoji: '🍗', name: '닭가슴살' },
+            { emoji: '🥗', name: '샐러드' },
+            { emoji: '🥑', name: '아보카도' },
+            { emoji: '🍌', name: '바나나' },
+            { emoji: '🍅', name: '토마토' },
+            { emoji: '🥚', name: '계란' }
+        ];
+
+        const JUNK_FOODS = [
+            { emoji: '🍜', name: '라면' },
+            { emoji: '🍔', name: '햄버거' },
+            { emoji: '🍕', name: '피자' },
+            { emoji: '🍟', name: '감자튀김' },
+            { emoji: '🍩', name: '도넛' },
+            { emoji: '🥤', name: '콜라' }
+        ];
+
+        /**
+         * 5. 캔버스 및 30초 서바이벌 상태 관리
+         */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        const GAME_STATE = {
+            MENU: 'MENU',
+            PLAYING: 'PLAYING',
+            TRANSFORMING: 'TRANSFORMING',
+            RESULT: 'RESULT'
+        };
+
+        let currentState = GAME_STATE.MENU;
+        let score = 0;
+        let lives = 3;
+        const GAME_DURATION = 30.0;
+        let timeLeft = GAME_DURATION;
+        let lastFrameTime = 0;
+
+        const player = {
+            x: width / 2,
+            targetX: width / 2,
+            groundY: height - 46,
+            headRadius: 30,
+            expression: 'normal',
+            expressionTimer: 0,
+            eatScale: 1,
+            isPig: false,
+            pigScale: 1
+        };
+
+        let fallingItems = [];
+        let floatingTexts = [];
+        let particles = [];
+        let clouds = [];
+
+        let lastSpawnTime = 0;
+        let screenShakeTimer = 0;
+        let redFlashAlpha = 0;
+        let greenFlashAlpha = 0;
+        let pinkFlashAlpha = 0;
+
+        function initClouds() {
+            clouds = [];
+            for (let i = 0; i < 6; i++) {
+                clouds.push({
+                    x: Math.random() * width,
+                    y: 60 + Math.random() * (height * 0.4),
+                    speed: 0.2 + Math.random() * 0.35,
+                    scale: 0.65 + Math.random() * 0.65
+                });
+            }
+        }
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            player.groundY = height - 46;
+            player.x = Math.max(player.headRadius + 20, Math.min(width - player.headRadius - 20, player.x));
+            player.targetX = player.x;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function updateTargetPosition(clientX) {
+            const margin = player.headRadius + 16;
+            player.targetX = Math.max(margin, Math.min(width - margin, clientX));
+        }
+
+        window.addEventListener('mousemove', (e) => updateTargetPosition(e.clientX));
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) updateTargetPosition(e.touches[0].clientX);
+        }, { passive: true });
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) updateTargetPosition(e.touches[0].clientX);
+        }, { passive: true });
+
+        function updateHUD() {
+            document.getElementById('hud-char-name').textContent = CHARACTERS[selectedCharId].name;
+
+            let heartsStr = '';
+            for (let i = 0; i < 3; i++) {
+                heartsStr += i < lives ? '❤️' : '🖤';
+            }
+            document.getElementById('hud-hearts').textContent = heartsStr;
+
+            const timerEl = document.getElementById('timer-value');
+            const timerBox = document.getElementById('timer-box');
+            timerEl.textContent = `${Math.max(0, timeLeft).toFixed(1)}초`;
+            if (timeLeft <= 5.0) {
+                timerEl.classList.add('text-rose-600');
+                timerBox.classList.add('border-rose-500', 'animate-urgent');
+            } else {
+                timerEl.classList.remove('text-rose-600');
+                timerBox.classList.remove('border-rose-500', 'animate-urgent');
+            }
+
+            document.getElementById('score-value').textContent = score;
+        }
+
+        function startGame() {
+            sound.init();
+            score = 0;
+            lives = 3;
+            timeLeft = GAME_DURATION;
+            fallingItems = [];
+            floatingTexts = [];
+            particles = [];
+
+            player.isPig = false;
+            player.pigScale = 1;
+            player.expression = 'normal';
+            player.eatScale = 1;
+
+            lastSpawnTime = performance.now();
+            lastFrameTime = performance.now();
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+
+            updateHUD();
+            currentState = GAME_STATE.PLAYING;
+
+            const charName = CHARACTERS[selectedCharId].name;
+            spawnFloatingText(width / 2, height * 0.36, `${charName} 도전 시작! 30초 버티기!`, '#059669', 26);
+        }
+
+        function triggerPigTransformation() {
+            currentState = GAME_STATE.TRANSFORMING;
+            sound.playPigTransform();
+            fallingItems = [];
+            player.isPig = true;
+            player.pigScale = 0.2;
+            pinkFlashAlpha = 0.55;
+            screenShakeTimer = 20;
+
+            const headPos = getPlayerHeadCenter();
+            for (let i = 0; i < 34; i++) {
+                const angle = (Math.PI * 2 * i) / 34 + Math.random() * 0.2;
+                const speed = 2.2 + Math.random() * 6.5;
+                particles.push({
+                    x: headPos.x,
+                    y: headPos.y + 10,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 1,
+                    radius: 8 + Math.random() * 10,
+                    color: i % 2 === 0 ? '#ffffff' : '#f472b6',
+                    alpha: 1
+                });
+            }
+
+            spawnFloatingText(headPos.x, headPos.y - 55, '펑!! 돼지로 뿅 변신했다 꿀꿀! 🐷', '#db2777', 26);
+
+            setTimeout(() => {
+                finishGame(true);
+            }, 1350);
+        }
+
+        function finishGame(becamePig) {
+            currentState = GAME_STATE.RESULT;
+            document.getElementById('hud').classList.add('hidden');
+
+            if (!becamePig) {
+                sound.playSuccess();
+            }
+
+            // 고정 3인 명단에서 방금 플레이한 자매의 최신 점수 덮어쓰기 & 즉시 재정렬
+            const { rankNumber } = updateSisterLatestScore(selectedCharId, score, becamePig);
+
+            const charObj = CHARACTERS[selectedCharId];
+            const resultCard = document.getElementById('result-card');
+            const badge = document.getElementById('result-badge');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+            const statusEl = document.getElementById('res-status');
+            const rankPill = document.getElementById('rank-change-pill');
+
+            document.getElementById('res-char-name').textContent = charObj.name;
+            document.getElementById('res-score').textContent = `${score}개`;
+            rankPill.textContent = `${charObj.name} 현재 ${rankNumber}위!`;
+
+            if (becamePig) {
+                resultCard.classList.remove('border-emerald-500');
+                resultCard.classList.add('border-pink-400');
+                badge.className = 'inline-block bg-pink-100 text-pink-600 font-bold text-xs px-3 py-1 rounded-full mb-1';
+                badge.textContent = '🐷 목숨 3개 소진 • 다이어트 실패!';
+                title.textContent = '돼지 변신 엔딩! 🐽';
+                title.className = 'font-jua text-3xl sm:text-4xl text-pink-600 mb-1';
+                desc.textContent = `정크푸드를 3번 먹어 ${charObj.name}이(가) 귀여운 분홍 돼지가 되어버렸어요!`;
+                statusEl.textContent = '돼지변신 🐷';
+                statusEl.className = 'font-jua text-lg text-pink-600';
+            } else {
+                resultCard.classList.remove('border-pink-400');
+                resultCard.classList.add('border-emerald-500');
+                badge.className = 'inline-block bg-emerald-100 text-emerald-700 font-bold text-xs px-3 py-1 rounded-full mb-1';
+                badge.textContent = '⏱️ 30초 생존 성공!';
+                title.textContent = '30초 생존 성공! ✨';
+                title.className = 'font-jua text-3xl sm:text-4xl text-emerald-600 mb-1';
+                desc.textContent = `30초 동안 끝까지 버텨내며 건강한 식단을 지켜냈습니다!`;
+                statusEl.textContent = '생존성공 ✨';
+                statusEl.className = 'font-jua text-lg text-emerald-600';
+            }
+
+            const resCanvas = document.getElementById('result-char-canvas');
+            const resCtx = resCanvas.getContext('2d');
+            resCtx.clearRect(0, 0, resCanvas.width, resCanvas.height);
+            if (becamePig) {
+                drawPigCharacter(resCtx, resCanvas.width / 2, resCanvas.height - 14, 1.05);
+            } else {
+                drawSisterCharacter(resCtx, resCanvas.width / 2, resCanvas.height - 14, selectedCharId, 'happy', 0.95, false);
+            }
+
+            // 결과 창 및 메인 화면의 고정 3인 랭킹 보드 즉시 새로고침
+            renderThreeSisterRanking('result-ranking-list', selectedCharId);
+            renderThreeSisterRanking('start-ranking-list', selectedCharId);
+
+            document.getElementById('result-screen').classList.remove('hidden');
+        }
+
+        function spawnFood() {
+            const elapsed = GAME_DURATION - timeLeft;
+            const progress = Math.min(1, elapsed / GAME_DURATION);
+
+            if (fallingItems.length >= 13) return;
+
+            const junkRatio = 0.38 + progress * 0.14;
+            const isJunk = Math.random() < junkRatio;
+            const pool = isJunk ? JUNK_FOODS : HEALTHY_FOODS;
+            const itemData = pool[Math.floor(Math.random() * pool.length)];
+
+            const heightScale = Math.max(0.75, height / 750);
+            const minSpeed = 3.0 + progress * 1.6;
+            const maxSpeed = 6.2 + progress * 2.8;
+            const speed = (minSpeed + Math.random() * (maxSpeed - minSpeed)) * heightScale;
+
+            const radius = 24;
+            const margin = 45;
+            const x = margin + Math.random() * (width - margin * 2);
+
+            fallingItems.push({
+                x,
+                y: -38,
+                radius,
+                speed,
+                isJunk,
+                emoji: itemData.emoji,
+                name: itemData.name,
+                rotation: (Math.random() - 0.5) * 0.4,
+                rotSpeed: (Math.random() - 0.5) * 0.045
+            });
+        }
+
+        function spawnFloatingText(x, y, text, color, size = 23) {
+            floatingTexts.push({ x, y, text, color, size, alpha: 1, vy: -2.1 });
+        }
+
+        function spawnParticles(x, y, color) {
+            for (let i = 0; i < 12; i++) {
+                const angle = (Math.PI * 2 * i) / 12 + Math.random() * 0.3;
+                const speed = 2.5 + Math.random() * 4.5;
+                particles.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 1.5,
+                    radius: 4 + Math.random() * 4,
+                    color,
+                    alpha: 1
+                });
+            }
+        }
+
+        function getPlayerHeadCenter() {
+            const c = CHARACTERS[selectedCharId];
+            if (player.isPig) {
+                return { x: player.x, y: player.groundY - 46, r: 34 };
+            }
+            const headY = player.groundY - (c.legH + c.bodyH + c.faceRy - 4);
+            return { x: player.x, y: headY, r: player.headRadius };
+        }
+
+        function update(timestamp) {
+            if (!lastFrameTime) lastFrameTime = timestamp;
+            const dt = Math.min(0.05, (timestamp - lastFrameTime) / 1000);
+            lastFrameTime = timestamp;
+
+            clouds.forEach(c => {
+                c.x += c.speed;
+                if (c.x > width + 100) c.x = -100;
+            });
+
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y += ft.vy;
+                ft.alpha -= 0.02;
+                if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+            }
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.14;
+                p.alpha -= 0.03;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+
+            if (screenShakeTimer > 0) screenShakeTimer--;
+            if (redFlashAlpha > 0) redFlashAlpha = Math.max(0, redFlashAlpha - 0.03);
+            if (greenFlashAlpha > 0) greenFlashAlpha = Math.max(0, greenFlashAlpha - 0.03);
+            if (pinkFlashAlpha > 0) pinkFlashAlpha = Math.max(0, pinkFlashAlpha - 0.025);
+
+            if (currentState === GAME_STATE.TRANSFORMING) {
+                player.pigScale += (1 - player.pigScale) * 0.22;
+                return;
+            }
+
+            if (currentState !== GAME_STATE.PLAYING) return;
+
+            timeLeft -= dt;
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                updateHUD();
+                finishGame(false);
+                return;
+            }
+            updateHUD();
+
+            player.x += (player.targetX - player.x) * 0.3;
+
+            if (player.expressionTimer > 0) {
+                player.expressionTimer--;
+                if (player.expressionTimer <= 0) player.expression = 'normal';
+            }
+            player.eatScale += (1 - player.eatScale) * 0.2;
+
+            const elapsed = GAME_DURATION - timeLeft;
+            const spawnInterval = Math.max(420, 680 - elapsed * 8.5);
+            if (timestamp - lastSpawnTime > spawnInterval) {
+                spawnFood();
+                if (elapsed > 10 && Math.random() < 0.32) {
+                    setTimeout(() => {
+                        if (currentState === GAME_STATE.PLAYING) spawnFood();
+                    }, 160);
+                }
+                lastSpawnTime = timestamp;
+            }
+
+            const head = getPlayerHeadCenter();
+
+            for (let i = fallingItems.length - 1; i >= 0; i--) {
+                const item = fallingItems[i];
+                item.y += item.speed;
+                item.rotation += item.rotSpeed;
+
+                const dist = Math.hypot(item.x - head.x, item.y - head.y);
+
+                if (dist < head.r + item.radius * 0.82) {
+                    if (item.isJunk) {
+                        lives -= 1;
+                        sound.playBad();
+                        player.expression = 'sad';
+                        player.expressionTimer = 35;
+                        player.eatScale = 0.85;
+                        screenShakeTimer = 14;
+                        redFlashAlpha = 0.38;
+
+                        updateHUD();
+                        fallingItems.splice(i, 1);
+
+                        if (lives <= 0) {
+                            triggerPigTransformation();
+                            return;
+                        } else {
+                            spawnFloatingText(head.x, head.y - 45, `위험! ❤️ -1 (${item.name})`, '#e11d48', 22);
+                            spawnParticles(item.x, item.y, '#fb7185');
+                        }
+                    } else {
+                        score += 1;
+                        sound.playGood();
+                        player.expression = 'happy';
+                        player.expressionTimer = 26;
+                        player.eatScale = 1.22;
+                        greenFlashAlpha = 0.22;
+
+                        updateHUD();
+                        spawnFloatingText(head.x, head.y - 45, `+1점! 💪 (${item.name})`, '#059669', 23);
+                        spawnParticles(item.x, item.y, '#34d399');
+                        fallingItems.splice(i, 1);
+                    }
+                    continue;
+                }
+
+                if (item.y > height + 50) {
+                    fallingItems.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            ctx.save();
+
+            if (screenShakeTimer > 0) {
+                ctx.translate((Math.random() - 0.5) * 11, (Math.random() - 0.5) * 11);
+            }
+
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+            skyGrad.addColorStop(0, '#bae6fd');
+            skyGrad.addColorStop(0.7, '#ecfdf5');
+            skyGrad.addColorStop(1, '#d9f99d');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            clouds.forEach(c => drawCloud(c.x, c.y, c.scale));
+
+            const groundHeight = 46;
+            ctx.fillStyle = '#84cc16';
+            ctx.fillRect(0, height - groundHeight, width, groundHeight);
+            ctx.fillStyle = '#65a30d';
+            ctx.fillRect(0, height - groundHeight, width, 6);
+
+            if (player.isPig) {
+                drawPigCharacter(ctx, player.x, player.groundY, player.pigScale);
+            } else {
+                drawSisterCharacter(
+                    ctx,
+                    player.x,
+                    player.groundY,
+                    selectedCharId,
+                    player.expression,
+                    player.eatScale,
+                    true
+                );
+            }
+
+            fallingItems.forEach(item => drawFoodItem(item));
+
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            floatingTexts.forEach(ft => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.alpha);
+                ctx.font = `900 ${ft.size}px 'Jua', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = 'white';
+                ctx.strokeText(ft.text, ft.x, ft.y);
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            });
+
+            if (redFlashAlpha > 0) {
+                ctx.fillStyle = `rgba(244, 63, 94, ${redFlashAlpha})`;
+                ctx.fillRect(0, 0, width, height);
+            }
+            if (greenFlashAlpha > 0) {
+                ctx.fillStyle = `rgba(16, 185, 129, ${greenFlashAlpha})`;
+                ctx.fillRect(0, 0, width, height);
+            }
+            if (pinkFlashAlpha > 0) {
+                ctx.fillStyle = `rgba(244, 114, 182, ${pinkFlashAlpha})`;
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            ctx.restore();
+        }
+
+        function drawCloud(x, y, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+            ctx.beginPath();
+            ctx.arc(0, 0, 26, 0, Math.PI * 2);
+            ctx.arc(24, -6, 32, 0, Math.PI * 2);
+            ctx.arc(52, 0, 24, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        /**
+         * 6. 세 자매 캐릭터 일러스트 렌더러
+         */
+        function drawSisterCharacter(targetCtx, x, footY, charId, expression = 'normal', headScale = 1, showHitRing = false) {
+            const c = CHARACTERS[charId];
+            const bodyTopY = footY - c.legH - c.bodyH;
+            const headCenterY = bodyTopY - (c.faceRy - 4);
+
+            targetCtx.save();
+
+            // 1. 발바닥 그림자
+            targetCtx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            targetCtx.beginPath();
+            targetCtx.ellipse(x, footY, c.shoulderW + 10, 6.5, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            // 2. 뒷머리
+            targetCtx.fillStyle = c.hairColor;
+            if (charId === 'hyebin') {
+                // 노혜빈: 30대 초반의 자연스러운 S컬 웨이브 히피펌
+                targetCtx.beginPath();
+                targetCtx.moveTo(x - 27, headCenterY - 12);
+                targetCtx.bezierCurveTo(x - 34, headCenterY + 2, x - 24, headCenterY + 14, x - 33, headCenterY + 28);
+                targetCtx.bezierCurveTo(x - 37, headCenterY + 37, x - 26, headCenterY + 46, x - 22, headCenterY + 49);
+                targetCtx.lineTo(x + 22, headCenterY + 49);
+                targetCtx.bezierCurveTo(x + 26, headCenterY + 46, x + 37, headCenterY + 37, x + 33, headCenterY + 28);
+                targetCtx.bezierCurveTo(x + 24, headCenterY + 14, x + 34, headCenterY + 2, x + 27, headCenterY - 12);
+                targetCtx.arc(x, headCenterY - 10, 28, 0, Math.PI, true);
+                targetCtx.closePath();
+                targetCtx.fill();
+
+                targetCtx.strokeStyle = '#5c3e30';
+                targetCtx.lineWidth = 1.6;
+                targetCtx.beginPath();
+                targetCtx.moveTo(x - 28, headCenterY + 4);
+                targetCtx.quadraticCurveTo(x - 23, headCenterY + 15, x - 29, headCenterY + 27);
+                targetCtx.quadraticCurveTo(x - 33, headCenterY + 36, x - 25, headCenterY + 45);
+                targetCtx.moveTo(x + 28, headCenterY + 4);
+                targetCtx.quadraticCurveTo(x + 23, headCenterY + 15, x + 29, headCenterY + 27);
+                targetCtx.quadraticCurveTo(x + 33, headCenterY + 36, x + 25, headCenterY + 45);
+                targetCtx.stroke();
+            } else if (charId === 'hyojeong') {
+                // 노효정: 쇄골 아래 가슴 위 기장의 미디엄 롱 생머리
+                targetCtx.beginPath();
+                targetCtx.moveTo(x - 33, headCenterY - 8);
+                targetCtx.quadraticCurveTo(x - 36, headCenterY + 34, x - 27, headCenterY + 56);
+                targetCtx.lineTo(x + 27, headCenterY + 56);
+                targetCtx.quadraticCurveTo(x + 36, headCenterY + 34, x + 33, headCenterY - 8);
+                targetCtx.arc(x, headCenterY - 8, 33, 0, Math.PI, true);
+                targetCtx.closePath();
+                targetCtx.fill();
+            } else if (charId === 'noah') {
+                // 노아: 단정한 중단발 생머리
+                targetCtx.beginPath();
+                targetCtx.moveTo(x - 26, headCenterY - 8);
+                targetCtx.lineTo(x - 29, headCenterY + 42);
+                targetCtx.lineTo(x + 29, headCenterY + 42);
+                targetCtx.lineTo(x + 26, headCenterY - 8);
+                targetCtx.arc(x, headCenterY - 8, 26, 0, Math.PI, true);
+                targetCtx.closePath();
+                targetCtx.fill();
+            }
+
+            // 3. 다리 & 신발
+            const legW = charId === 'hyojeong' ? 10 : (charId === 'noah' ? 6.5 : 7.5);
+            const legGap = charId === 'hyojeong' ? 6.5 : (charId === 'noah' ? 4 : 5);
+            targetCtx.fillStyle = '#fed7aa';
+            targetCtx.fillRect(x - legGap - legW, footY - c.legH, legW, c.legH - 3);
+            targetCtx.fillRect(x + legGap, footY - c.legH, legW, c.legH - 3);
+
+            targetCtx.fillStyle = charId === 'noah' ? '#1e293b' : '#ffffff';
+            targetCtx.beginPath();
+            targetCtx.roundRect(x - legGap - legW - 2, footY - 7, legW + 4, 7, 3.5);
+            targetCtx.roundRect(x + legGap - 2, footY - 7, legW + 4, 7, 3.5);
+            targetCtx.fill();
+            targetCtx.strokeStyle = '#64748b';
+            targetCtx.lineWidth = 1.4;
+            targetCtx.stroke();
+
+            // 4. 의상
+            if (charId === 'hyebin') {
+                targetCtx.fillStyle = '#3b82f6';
+                targetCtx.fillRect(x - c.waistW, bodyTopY + c.bodyH - 8, c.waistW * 2, 9);
+
+                targetCtx.fillStyle = '#34d399';
+                targetCtx.beginPath();
+                targetCtx.roundRect(x - c.shoulderW, bodyTopY, c.shoulderW * 2, c.bodyH - 6, 10);
+                targetCtx.fill();
+
+                targetCtx.strokeStyle = '#ffffff';
+                targetCtx.lineWidth = 1.8;
+                targetCtx.beginPath();
+                targetCtx.moveTo(x - 4, bodyTopY + 3);
+                targetCtx.lineTo(x - 4, bodyTopY + 12);
+                targetCtx.moveTo(x + 4, bodyTopY + 3);
+                targetCtx.lineTo(x + 4, bodyTopY + 12);
+                targetCtx.stroke();
+            } else if (charId === 'hyojeong') {
+                targetCtx.fillStyle = '#f472b6';
+                targetCtx.beginPath();
+                targetCtx.ellipse(x, bodyTopY + c.bodyH * 0.52, c.shoulderW + 2, c.bodyH * 0.54, 0, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                targetCtx.strokeStyle = '#fce7f3';
+                targetCtx.lineWidth = 2.5;
+                targetCtx.beginPath();
+                targetCtx.moveTo(x, bodyTopY + 2);
+                targetCtx.lineTo(x, bodyTopY + c.bodyH - 1);
+                targetCtx.stroke();
+            } else if (charId === 'noah') {
+                targetCtx.fillStyle = '#334155';
+                targetCtx.beginPath();
+                targetCtx.moveTo(x - c.waistW, bodyTopY + c.bodyH - 12);
+                targetCtx.lineTo(x + c.waistW, bodyTopY + c.bodyH - 12);
+                targetCtx.lineTo(x + c.waistW + 4.5, bodyTopY + c.bodyH + 3);
+                targetCtx.lineTo(x - c.waistW - 4.5, bodyTopY + c.bodyH + 3);
+                targetCtx.closePath();
+                targetCtx.fill();
+
+                targetCtx.fillStyle = '#1e293b';
+                targetCtx.beginPath();
+                targetCtx.roundRect(x - c.shoulderW, bodyTopY, c.shoulderW * 2, c.bodyH - 9, 8);
+                targetCtx.fill();
+
+                targetCtx.fillStyle = '#ffffff';
+                targetCtx.beginPath();
+                targetCtx.moveTo(x - 6, bodyTopY);
+                targetCtx.lineTo(x + 6, bodyTopY);
+                targetCtx.lineTo(x, bodyTopY + 13);
+                targetCtx.closePath();
+                targetCtx.fill();
+
+                targetCtx.fillStyle = '#e11d48';
+                targetCtx.beginPath();
+                targetCtx.arc(x, bodyTopY + 7.5, 3, 0, Math.PI * 2);
+                targetCtx.fill();
+            }
+
+            // 양팔
+            targetCtx.strokeStyle = '#fed7aa';
+            targetCtx.lineWidth = c.armThick;
+            targetCtx.lineCap = 'round';
+            targetCtx.beginPath();
+            targetCtx.moveTo(x - c.shoulderW + 1, bodyTopY + 7);
+            targetCtx.lineTo(x - c.shoulderW - 9, bodyTopY + 19);
+            targetCtx.moveTo(x + c.shoulderW - 1, bodyTopY + 7);
+            targetCtx.lineTo(x + c.shoulderW + 9, bodyTopY + 19);
+            targetCtx.stroke();
+
+            // 5. 얼굴 영역
+            targetCtx.save();
+            targetCtx.translate(x, headCenterY);
+            targetCtx.scale(headScale, headScale);
+
+            if (showHitRing) {
+                targetCtx.strokeStyle = expression === 'sad'
+                    ? 'rgba(244, 63, 94, 0.45)'
+                    : 'rgba(16, 185, 129, 0.35)';
+                targetCtx.lineWidth = 2.5;
+                targetCtx.setLineDash([5, 5]);
+                targetCtx.beginPath();
+                targetCtx.arc(0, 0, player.headRadius + 5, 0, Math.PI * 2);
+                targetCtx.stroke();
+                targetCtx.setLineDash([]);
+            }
+
+            targetCtx.fillStyle = '#ffedd5';
+            targetCtx.strokeStyle = '#fdba74';
+            targetCtx.lineWidth = 2.3;
+            targetCtx.beginPath();
+            if (charId === 'noah') {
+                targetCtx.moveTo(-c.faceRx, -4);
+                targetCtx.arc(0, -4, c.faceRx, Math.PI, 0, false);
+                targetCtx.quadraticCurveTo(c.faceRx, 16, 0, c.faceRy);
+                targetCtx.quadraticCurveTo(-c.faceRx, 16, -c.faceRx, -4);
+            } else if (charId === 'hyojeong') {
+                targetCtx.ellipse(0, 1, c.faceRx, c.faceRy, 0, 0, Math.PI * 2);
+            } else {
+                targetCtx.ellipse(0, 0, c.faceRx, c.faceRy, 0, 0, Math.PI * 2);
+            }
+            targetCtx.fill();
+            targetCtx.stroke();
+
+            // 앞머리
+            targetCtx.fillStyle = c.hairColor;
+            if (charId === 'hyebin') {
+                targetCtx.beginPath();
+                targetCtx.arc(0, -3, c.faceRx + 1, Math.PI * 1.04, Math.PI * 1.96);
+                targetCtx.quadraticCurveTo(10, -13, 2, -22);
+                targetCtx.quadraticCurveTo(-10, -13, -(c.faceRx + 1), -3);
+                targetCtx.fill();
+
+                targetCtx.strokeStyle = c.hairColor;
+                targetCtx.lineWidth = 3.2;
+                targetCtx.lineCap = 'round';
+                targetCtx.beginPath();
+                targetCtx.moveTo(-c.faceRx + 1, -2);
+                targetCtx.quadraticCurveTo(-c.faceRx - 4, 8, -c.faceRx + 2, 18);
+                targetCtx.moveTo(c.faceRx - 1, -2);
+                targetCtx.quadraticCurveTo(c.faceRx + 4, 8, c.faceRx - 2, 18);
+                targetCtx.stroke();
+            } else if (charId === 'hyojeong') {
+                targetCtx.beginPath();
+                targetCtx.arc(0, -3, c.faceRx + 1, Math.PI * 1.05, Math.PI * 1.95);
+                targetCtx.quadraticCurveTo(6, -12, -4, -21);
+                targetCtx.quadraticCurveTo(-16, -12, -(c.faceRx + 1), -3);
+                targetCtx.fill();
+            } else {
+                targetCtx.beginPath();
+                targetCtx.arc(0, -4, c.faceRx + 0.5, Math.PI * 1.06, Math.PI * 1.94);
+                targetCtx.lineTo(19, -11);
+                targetCtx.lineTo(-19, -11);
+                targetCtx.closePath();
+                targetCtx.fill();
+            }
+
+            // 세 자매 닮은 볼터치
+            targetCtx.fillStyle = 'rgba(251, 113, 133, 0.42)';
+            const blushX = charId === 'hyojeong' ? 18 : 14;
+            targetCtx.beginPath();
+            targetCtx.ellipse(-blushX, 6, 4.8, 2.6, 0, 0, Math.PI * 2);
+            targetCtx.ellipse(blushX, 6, 4.8, 2.6, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            // 세 자매 닮은 눈 & 표정
+            if (expression === 'happy') {
+                targetCtx.strokeStyle = '#1f2937';
+                targetCtx.lineWidth = 2.6;
+                targetCtx.lineCap = 'round';
+                targetCtx.beginPath();
+                targetCtx.moveTo(-13, -1);
+                targetCtx.lineTo(-9.5, -5.5);
+                targetCtx.lineTo(-6, -1);
+                targetCtx.moveTo(6, -1);
+                targetCtx.lineTo(9.5, -5.5);
+                targetCtx.lineTo(13, -1);
+                targetCtx.stroke();
+
+                targetCtx.fillStyle = '#f43f5e';
+                targetCtx.beginPath();
+                targetCtx.arc(0, 8, 8.5, 0, Math.PI);
+                targetCtx.fill();
+            } else if (expression === 'sad') {
+                targetCtx.strokeStyle = '#1f2937';
+                targetCtx.lineWidth = 2.6;
+                targetCtx.lineCap = 'round';
+                targetCtx.beginPath();
+                targetCtx.moveTo(-13, -5);
+                targetCtx.lineTo(-7.5, -1);
+                targetCtx.lineTo(-13, 3);
+                targetCtx.moveTo(13, -5);
+                targetCtx.lineTo(7.5, -1);
+                targetCtx.lineTo(13, 3);
+                targetCtx.stroke();
+
+                targetCtx.beginPath();
+                targetCtx.arc(0, 14, 6.5, Math.PI * 1.15, Math.PI * 1.85);
+                targetCtx.stroke();
+            } else {
+                targetCtx.fillStyle = '#1f2937';
+                targetCtx.beginPath();
+                targetCtx.arc(-9.5, -1, 3.6, 0, Math.PI * 2);
+                targetCtx.arc(9.5, -1, 3.6, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                targetCtx.fillStyle = '#ffffff';
+                targetCtx.beginPath();
+                targetCtx.arc(-10.6, -2.1, 1.3, 0, Math.PI * 2);
+                targetCtx.arc(8.4, -2.1, 1.3, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                targetCtx.fillStyle = '#fb7185';
+                targetCtx.beginPath();
+                targetCtx.arc(0, 8.5, 5.2, 0, Math.PI);
+                targetCtx.fill();
+            }
+
+            // 안경
+            if (charId === 'hyebin') {
+                targetCtx.strokeStyle = '#b45309';
+                targetCtx.lineWidth = 1.7;
+                targetCtx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+                targetCtx.beginPath();
+                targetCtx.arc(-9.8, -1, 7.8, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.stroke();
+
+                targetCtx.beginPath();
+                targetCtx.arc(9.8, -1, 7.8, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.stroke();
+
+                targetCtx.beginPath();
+                targetCtx.moveTo(-2.0, -1);
+                targetCtx.lineTo(2.0, -1);
+                targetCtx.stroke();
+            } else if (charId === 'noah') {
+                targetCtx.strokeStyle = '#1e293b';
+                targetCtx.lineWidth = 2.2;
+                targetCtx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+                targetCtx.beginPath();
+                targetCtx.arc(-9.5, -1, 7.5, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.stroke();
+
+                targetCtx.beginPath();
+                targetCtx.arc(9.5, -1, 7.5, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.stroke();
+
+                targetCtx.beginPath();
+                targetCtx.moveTo(-2.0, -1);
+                targetCtx.lineTo(2.0, -1);
+                targetCtx.stroke();
+            }
+
+            targetCtx.restore();
+            targetCtx.restore();
+        }
+
+        /**
+         * 7. 분홍 돼지 변신 캐릭터 일러스트
+         */
+        function drawPigCharacter(targetCtx, x, footY, scale = 1) {
+            targetCtx.save();
+            targetCtx.translate(x, footY);
+            targetCtx.scale(scale, scale);
+
+            targetCtx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+            targetCtx.beginPath();
+            targetCtx.ellipse(0, 0, 38, 9, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            targetCtx.fillStyle = '#f9a8d4';
+            targetCtx.strokeStyle = '#db2777';
+            targetCtx.lineWidth = 3;
+            targetCtx.beginPath();
+            targetCtx.ellipse(0, -28, 36, 26, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+            targetCtx.stroke();
+
+            targetCtx.fillStyle = '#f472b6';
+            targetCtx.beginPath();
+            targetCtx.roundRect(-22, -10, 11, 10, 4);
+            targetCtx.roundRect(11, -10, 11, 10, 4);
+            targetCtx.fill();
+            targetCtx.stroke();
+
+            const headY = -56;
+            targetCtx.fillStyle = '#fbcfe8';
+            targetCtx.beginPath();
+            targetCtx.arc(0, headY, 28, 0, Math.PI * 2);
+            targetCtx.fill();
+            targetCtx.stroke();
+
+            targetCtx.fillStyle = '#f472b6';
+            targetCtx.beginPath();
+            targetCtx.moveTo(-22, headY - 16);
+            targetCtx.lineTo(-28, headY - 34);
+            targetCtx.lineTo(-10, headY - 24);
+            targetCtx.closePath();
+            targetCtx.fill();
+            targetCtx.stroke();
+
+            targetCtx.beginPath();
+            targetCtx.moveTo(22, headY - 16);
+            targetCtx.lineTo(28, headY - 34);
+            targetCtx.lineTo(10, headY - 24);
+            targetCtx.closePath();
+            targetCtx.fill();
+            targetCtx.stroke();
+
+            targetCtx.strokeStyle = '#831843';
+            targetCtx.lineWidth = 2.5;
+            targetCtx.beginPath();
+            targetCtx.arc(-11, headY - 6, 4.5, 0, Math.PI * 1.7);
+            targetCtx.stroke();
+            targetCtx.beginPath();
+            targetCtx.arc(11, headY - 6, 4.5, 0, Math.PI * 1.7);
+            targetCtx.stroke();
+
+            targetCtx.fillStyle = '#f472b6';
+            targetCtx.beginPath();
+            targetCtx.ellipse(0, headY + 6, 12, 8.5, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+            targetCtx.stroke();
+
+            targetCtx.fillStyle = '#831843';
+            targetCtx.beginPath();
+            targetCtx.arc(-4.5, headY + 6, 2.3, 0, Math.PI * 2);
+            targetCtx.arc(4.5, headY + 6, 2.3, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            targetCtx.font = "900 15px 'Jua', sans-serif";
+            targetCtx.textAlign = 'center';
+            targetCtx.fillStyle = '#db2777';
+            targetCtx.fillText('꿀꿀~ 🐷', 0, headY - 38);
+
+            targetCtx.restore();
+        }
+
+        function drawFoodItem(item) {
+            ctx.save();
+            ctx.translate(item.x, item.y);
+            ctx.rotate(item.rotation);
+
+            ctx.fillStyle = item.isJunk
+                ? 'rgba(254, 205, 211, 0.78)'
+                : 'rgba(209, 250, 229, 0.8)';
+            ctx.beginPath();
+            ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.font = '34px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(item.emoji, 0, 2);
+
+            ctx.restore();
+        }
+
+        function gameLoop(timestamp) {
+            update(timestamp);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * 8. 시작 화면 세 자매 프리뷰 & UI 이벤트 바인딩
+         */
+        function renderCharacterPreviews() {
+            SISTER_IDS.forEach((id) => {
+                const pCanvas = document.getElementById(`preview-${id}`);
+                if (!pCanvas) return;
+                const pCtx = pCanvas.getContext('2d');
+                pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+                drawSisterCharacter(pCtx, pCanvas.width / 2, pCanvas.height - 8, id, 'normal', 0.94, false);
+            });
+        }
+
+        function selectCharacter(charId) {
+            selectedCharId = charId;
+            document.getElementById('selected-char-badge').textContent = CHARACTERS[charId].name;
+
+            document.querySelectorAll('.char-card').forEach((card) => {
+                if (card.dataset.char === charId) {
+                    card.className = 'char-card cursor-pointer rounded-2xl p-3 border-3 border-emerald-500 bg-emerald-50/90 ring-2 ring-emerald-400 transition-all flex flex-col items-center justify-center scale-[1.02]';
+                } else {
+                    card.className = 'char-card cursor-pointer rounded-2xl p-3 border-2 border-gray-200 bg-gray-50 hover:bg-emerald-50/40 transition-all flex flex-col items-center justify-center opacity-85 hover:opacity-100';
+                }
+            });
+        }
+
+        document.querySelectorAll('.char-card').forEach((card) => {
+            card.addEventListener('click', () => {
+                sound.init();
+                sound.playGood();
+                selectCharacter(card.dataset.char);
+            });
+        });
+
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('retry-btn').addEventListener('click', startGame);
+
+        document.getElementById('change-char-btn').addEventListener('click', () => {
+            document.getElementById('result-screen').classList.add('hidden');
+            renderThreeSisterRanking('start-ranking-list');
+            document.getElementById('start-screen').classList.remove('hidden');
+            currentState = GAME_STATE.MENU;
+        });
+
+        document.getElementById('reset-rank-start-btn').addEventListener('click', () => {
+            localStorage.removeItem(RANKING_STORAGE_KEY);
+            renderThreeSisterRanking('start-ranking-list');
+            renderThreeSisterRanking('result-ranking-list');
+        });
+
+        document.getElementById('sound-toggle').addEventListener('click', (e) => {
+            const isOn = sound.toggle();
+            e.currentTarget.textContent = isOn ? '🔊' : '🔇';
+        });
+
+        window.onload = function () {
+            resizeCanvas();
+            initClouds();
+            renderCharacterPreviews();
+            selectCharacter('hyebin');
+            renderThreeSisterRanking('start-ranking-list');
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
